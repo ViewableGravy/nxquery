@@ -170,8 +170,8 @@ export class NXQueryPlugin {
 
   private async ensureBaseStructure(dir: string) {
     await this.ensureDirectory(dir)
-    await this.ensureFile(path.join(dir, 'index.ts'), () => ['export const NXQuery = {}', '', 'export default NXQuery', ''].join('\n'))
-    await this.ensureFile(path.join(dir, 'keys.ts'), () => ['export const queryKeys = {}', '', 'export default queryKeys', ''].join('\n'))
+    await this.ensureFile(path.join(dir, 'index.ts'), () => ['export const NXQuery = {}', ''].join('\n'))
+    await this.ensureFile(path.join(dir, 'keys.ts'), () => ['export const queryKeys = {}', ''].join('\n'))
 
     const entries = await fs.readdir(dir, { withFileTypes: true })
     for (const entry of entries) {
@@ -195,7 +195,7 @@ export class NXQueryPlugin {
     await this.ensureDirectory(namespacePath)
     await this.ensureDirectory(queriesDir)
     await this.ensureDirectory(mutationsDir)
-    await this.ensureFile(keyFile, () => ['export const queryKeys = {}', '', 'export default queryKeys', ''].join('\n'))
+    await this.ensureFile(keyFile, () => ['export const queryKeys = {}', ''].join('\n'))
   }
 
   private async ensureDirectory(target: string) {
@@ -240,7 +240,7 @@ export class NXQueryPlugin {
     return [
       "import { queryOptions } from '@tanstack/react-query'",
       "import { z } from 'zod'",
-      "import queryKeys from '../queryKeys'",
+      "import { queryKeys } from '../queryKeys'",
       '',
       '/***** TYPE DEFINITIONS *****/',
       `export type ${argsType} = z.infer<typeof argsSchema>`,
@@ -274,17 +274,20 @@ export class NXQueryPlugin {
   private buildMutationTemplate(namespace: string, fileName: string) {
     const namespacePascal = this.toPascalCase(namespace)
     const filePascal = this.toPascalCase(fileName)
+    const argsType = `${namespacePascal}${filePascal}Args`
     const returnType = `${namespacePascal}${filePascal}Return`
     const accessor = `${this.buildPropertyAccessor('queryKeys', fileName)}.mutation`
     return [
       "import { mutationOptions } from '@tanstack/react-query'",
       "import { z } from 'zod'",
-      "import queryKeys from '../queryKeys'",
+      "import { queryKeys } from '../queryKeys'",
       '',
       '/***** TYPE DEFINITIONS *****/',
+      `export type ${argsType} = z.infer<typeof argsSchema>`,
       `export type ${returnType} = z.infer<typeof responseSchema>`,
       '',
       '/***** SCHEMAS *****/',
+      'export const argsSchema = z.never()',
       'export const responseSchema = z.never()',
       '',
       '/***** CONSTS *****/',
@@ -294,8 +297,13 @@ export class NXQueryPlugin {
       'export const createMutationOptions = () => {',
       '  return mutationOptions({',
       `    mutationKey: ${accessor},`,
-      '    mutationFn: async () => {',
-      '      const response = await fetch(endpoint)',
+      `    mutationFn: async (rawArgs: ${argsType}) => {`,
+      '      const args = argsSchema.parse(rawArgs)',
+      '      const response = await fetch(endpoint, {',
+      "        method: 'POST',",
+      "        headers: { 'Content-Type': 'application/json' },",
+      '        body: JSON.stringify(args),',
+      '      })',
       '      const json = await response.json()',
       '      const parsed = responseSchema.parse(json)',
       '      return parsed as ' + returnType,
@@ -531,7 +539,7 @@ export class NXQueryPlugin {
     for (const [name, bucket] of namespace.operations.entries()) {
       lines.push(...this.renderNamespaceEntry(name, namespace.name, bucket))
     }
-    lines.push('} as const', '', 'export default queryKeys', '')
+    lines.push('} as const', '')
     return lines.join('\n')
   }
 
@@ -594,7 +602,7 @@ export class NXQueryPlugin {
     for (const ns of namespaces) {
       lines.push(`  ${this.formatPropertyKey(ns.name)}: ${this.toCamelCase(ns.name)}QueryKeys,`)
     }
-    lines.push('} as const', '', 'export default queryKeys', '')
+    lines.push('} as const', '')
     await this.writeFileIfChanged(filePath, lines.join('\n'))
   }
 
@@ -602,7 +610,7 @@ export class NXQueryPlugin {
     if (!this.resolvedDir) return
     const filePath = path.join(this.resolvedDir, 'index.ts')
 
-    const importLines: string[] = []
+    const importLines: Array<string> = []
     for (const ns of namespaces) {
       for (const bucket of ns.operations.values()) {
         for (const op of Object.values(bucket)) {
@@ -632,7 +640,7 @@ export class NXQueryPlugin {
       }
       body.push('  },')
     }
-    body.push('} as const', '', 'export default NXQuery', '')
+    body.push('} as const', '')
 
     const sections: string[] = []
     if (importLines.length) {

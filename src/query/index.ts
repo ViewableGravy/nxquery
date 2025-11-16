@@ -13,5 +13,3 @@ export const NXQuery = {
     example3: createDomainsExample3MutationOptions,
   },
 } as const
-
-export default NXQuery

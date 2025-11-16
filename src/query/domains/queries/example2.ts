@@ -1,6 +1,6 @@
 import { queryOptions } from '@tanstack/react-query'
 import { z } from 'zod'
-import queryKeys from '../queryKeys'
+import { queryKeys } from '../queryKeys'
 
 /***** TYPE DEFINITIONS *****/
 export type DomainsExample2Args = z.infer<typeof argsSchema>

@@ -13,5 +13,3 @@ export const queryKeys = {
     mutation: ['domains', 'example3'] as const,
   },
 } as const
-
-export default queryKeys

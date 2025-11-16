@@ -1,10 +1,9 @@
 import { defineConfig } from 'vite'
-import { nxquery } from "./vite/nxquery/plugin"
+import { nxquery } from './vite/nxquery/plugin'
 
-export default defineConfig({
+export const viteConfig = defineConfig({
   // Vite configuration options
-
-  plugins: [
-    nxquery()
-  ]
+  plugins: [nxquery()],
 })
+
+export default viteConfig
